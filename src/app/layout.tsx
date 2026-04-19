@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Mom Made Food",
   description: "Production cost & profit calculator",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
