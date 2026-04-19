@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(xxd \"C:/Users/Siddharth/exp/mom-made-food/.gitignore\")"
+    ]
+  }
+}
