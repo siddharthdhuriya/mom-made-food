@@ -15,7 +15,7 @@ const WHY = [
   {
     icon: "🫙",
     title: "Small Batches",
-    text: "Made in small batches so every chip is fresh and crispy — never sitting on a shelf.",
+    text: "Made in small batches so every chip is fresh and crispy. Never sitting on a shelf.",
   },
   {
     icon: "🫒",
@@ -209,7 +209,7 @@ export default function Home() {
               </div>
             </div>
             <p style={{ color: "#78716c", fontSize: "14px", lineHeight: 1.7 }}>
-              Thinly sliced, perfectly crispy banana chips from fresh raw bananas — salted just right
+              Thinly sliced, perfectly crispy banana chips from fresh raw bananas, salted just right
               and fried in pure groundnut oil. A classic Kerala-style snack with no shortcuts.
             </p>
             <div style={{
@@ -321,7 +321,7 @@ export default function Home() {
             fontSize: "12px", textAlign: "center", color: "#a8a29e",
             marginTop: "10px", fontStyle: "italic",
           }}>
-            Made to order — freshness guaranteed
+            Made to order. Freshness guaranteed.
           </p>
         </section>
 
