@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import NoScrollNumbers from "@/components/NoScrollNumbers";
 
 export const metadata: Metadata = {
   title: "Mom Made Food",
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="min-h-screen bg-amber-50 antialiased">{children}</body>
+      <body className="min-h-screen bg-amber-50 antialiased">
+        <NoScrollNumbers />
+        {children}
+      </body>
     </html>
   );
 }
