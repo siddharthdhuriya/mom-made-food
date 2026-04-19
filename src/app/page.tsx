@@ -445,7 +445,7 @@ export default async function Home() {
           From our kitchen to your family 💛
         </p>
         <p style={{ color: "#d6d3d1", fontSize: "11px", marginTop: "6px" }}>
-          © 2025 Mom Made Food · Mumbai
+          © {new Date().getFullYear()} Mom Made Food · Mumbai
         </p>
       </footer>
     </div>
