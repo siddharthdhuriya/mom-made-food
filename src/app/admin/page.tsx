@@ -11,6 +11,7 @@ import AuthScreen from "@/components/AuthScreen";
 import ProductionForm from "@/components/ProductionForm";
 import SellingForm from "@/components/SellingForm";
 import Reports from "@/components/Reports";
+import UnitPricing from "@/components/UnitPricing";
 
 const DEFAULT_PRODUCTION: ProductionInput = {
   batchDate: new Date().toISOString().split("T")[0],
@@ -51,12 +52,13 @@ const ZERO_SELL_CALC: SellingCalc = {
   isProfit: true,
 };
 
-type Tab = "production" | "selling" | "reports";
+type Tab = "production" | "selling" | "reports" | "pricing";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "production", label: "Inputs", icon: "🥬" },
   { id: "selling", label: "Selling", icon: "🏷️" },
   { id: "reports", label: "Reports", icon: "📊" },
+  { id: "pricing", label: "Pricing", icon: "💰" },
 ];
 
 export default function Home() {
@@ -274,6 +276,7 @@ export default function Home() {
             onEditBatch={handleEditBatch}
           />
         )}
+        {tab === "pricing" && <UnitPricing />}
       </main>
 
       {/* Bottom Nav */}

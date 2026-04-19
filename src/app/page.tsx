@@ -1,8 +1,44 @@
 import Image from "next/image";
 
+export const dynamic = "force-dynamic";
+
 const WA_TEXT = encodeURIComponent("I want to order some tasty banana chips");
 const WA_1 = `https://wa.me/919892181645?text=${WA_TEXT}`;
 const WA_2 = `https://wa.me/919619288170?text=${WA_TEXT}`;
+
+type PricingTier = { weight: string; price: string; popular: boolean };
+
+const DEFAULT_PRICING: PricingTier[] = [
+  { weight: "100g", price: "₹150", popular: false },
+  { weight: "250g", price: "₹250", popular: true },
+  { weight: "500g", price: "₹480", popular: true },
+  { weight: "1kg",  price: "₹960", popular: false },
+];
+
+async function getPricing(): Promise<PricingTier[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/unit_pricing?select=*&order=sort_order`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return DEFAULT_PRICING;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return DEFAULT_PRICING;
+    return data.map((r: { weight: string; price_rs: number; popular: boolean }) => ({
+      weight: r.weight,
+      price: `₹${r.price_rs}`,
+      popular: r.popular,
+    }));
+  } catch {
+    return DEFAULT_PRICING;
+  }
+}
 
 const FEATURES = [
   { icon: "🚫", label: "No preservatives" },
@@ -29,14 +65,9 @@ const WHY = [
   },
 ];
 
-const PRICING = [
-  { weight: "100g", price: "₹150", popular: false },
-  { weight: "250g", price: "₹250", popular: true },
-  { weight: "500g", price: "₹480", popular: true },
-  { weight: "1kg", price: "₹960", popular: false },
-];
 
-export default function Home() {
+export default async function Home() {
+  const PRICING = await getPricing();
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", background: "#fdf7ed" }}>
 
