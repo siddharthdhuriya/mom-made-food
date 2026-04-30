@@ -197,6 +197,10 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
 
   const totalYieldGrams = batches.reduce((sum, b) => sum + b.prodCalc.finalYieldGrams, 0);
   const totalProductionCost = batches.reduce((sum, b) => sum + b.prodCalc.totalProductionCost, 0);
+  const totalBananaCost = batches.reduce((sum, b) => sum + b.production.bananaCost, 0);
+  const totalOilCost = batches.reduce((sum, b) => sum + b.production.oilCost, 0);
+  const totalOtherCost = batches.reduce((sum, b) => sum + b.production.otherCost, 0);
+  const totalLabourCost = batches.reduce((sum, b) => sum + b.prodCalc.labourCost, 0);
   const totalSoldGrams = sales.reduce((sum, e) => sum + e.selling.packSize * (e.selling.quantity || 1), 0);
   const totalAvailableGrams = Math.max(0, totalYieldGrams - totalSoldGrams);
   const totalNetProfit = sales.reduce((sum, e) => sum + e.sellCalc.profitLoss * (e.selling.quantity || 1), 0);
@@ -262,9 +266,19 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
             </div>
           </div>
 
+          {batches.length > 0 && (
+            <div className="space-y-1.5 pt-1 border-t border-amber-100">
+              <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 pb-0.5">Production Cost</p>
+              <PnLRow label="Banana" value={fmt(totalBananaCost)} />
+              <PnLRow label="Oil" value={fmt(totalOilCost)} />
+              <PnLRow label="Other" value={fmt(totalOtherCost)} />
+              <PnLRow label="Labour" value={fmt(totalLabourCost)} />
+              <PnLRow label="Total Production Cost" value={fmt(totalProductionCost)} divider highlight />
+            </div>
+          )}
+
           {sales.length > 0 && (
             <div className="space-y-1.5 pt-1 border-t border-amber-100">
-              <PnLRow label="Production Cost" value={fmt(totalProductionCost)} />
               <PnLRow label="Total Revenue" value={fmt(totalRevenue)} />
               <PnLRow
                 label={totalNetProfit >= 0 ? "Net Profit" : "Net Loss"}
