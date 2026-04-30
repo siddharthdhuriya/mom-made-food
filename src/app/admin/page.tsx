@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { ProductionInput, SellingInput, ProductionCalc, SellingCalc, BatchRecord } from "@/types";
+import type { ProductionInput, SellingInput, ProductionCalc, SellingCalc, SellingEntry, BatchRecord } from "@/types";
 import { calculateProduction, calculateSelling } from "@/lib/calculations";
-import { getBatches, saveBatch, addSellingEntry, updateBatch } from "@/lib/storage";
+import { getBatches, saveBatch, updateBatch, getLocalSales, addLocalSale, deleteLocalSale } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import AuthScreen from "@/components/AuthScreen";
 import ProductionForm from "@/components/ProductionForm";
@@ -26,6 +26,7 @@ const DEFAULT_PRODUCTION: ProductionInput = {
 };
 
 const DEFAULT_SELLING: SellingInput = {
+  saleDate: new Date().toISOString().split("T")[0],
   packSize: 100,
   quantity: 1,
   sellingPrice: 0,
@@ -71,7 +72,7 @@ export default function Home() {
   const [prodCalc, setProdCalc] = useState<ProductionCalc>(ZERO_PROD_CALC);
   const [sellCalc, setSellCalc] = useState<SellingCalc>(ZERO_SELL_CALC);
   const [batches, setBatches] = useState<BatchRecord[]>([]);
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [sales, setSales] = useState<SellingEntry[]>([]);
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -95,7 +96,7 @@ export default function Home() {
       setSession(session);
       if (!session) {
         setBatches([]);
-        setSelectedBatchId(null);
+        setSales([]);
         setEditingBatchId(null);
         setProduction({ ...DEFAULT_PRODUCTION, batchDate: new Date().toISOString().split("T")[0] });
         setSelling(DEFAULT_SELLING);
@@ -105,16 +106,21 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load batches once authenticated
+  // Load batches + local sales once authenticated
   useEffect(() => {
     if (!session) return;
-    loadBatches().then((loaded) => {
-      if (loaded.length > 0) setSelectedBatchId(loaded[0].id);
-    });
+    loadBatches();
+    setSales(getLocalSales());
   }, [session, loadBatches]);
 
-  const selectedBatch = selectedBatchId ? batches.find((b) => b.id === selectedBatchId) ?? null : null;
-  const activeProdCalc = selectedBatch ? selectedBatch.prodCalc : prodCalc;
+  // avg cost per gram across all batches for sell calc
+  const activeProdCalc = useMemo<ProductionCalc>(() => {
+    if (batches.length === 0) return prodCalc;
+    const totalCost = batches.reduce((s, b) => s + b.prodCalc.totalProductionCost, 0);
+    const totalYield = batches.reduce((s, b) => s + b.prodCalc.finalYieldGrams, 0);
+    const cpg = totalYield > 0 ? totalCost / totalYield : 0;
+    return { ...ZERO_PROD_CALC, costPerGram: cpg, costPer100g: cpg * 100, totalProductionCost: totalCost, finalYieldGrams: totalYield };
+  }, [batches, prodCalc]);
 
   useEffect(() => {
     setProdCalc(calculateProduction(production));
@@ -161,8 +167,7 @@ export default function Home() {
       sellingEntries: [],
     };
     await saveBatch(record);
-    const updated = await loadBatches();
-    setSelectedBatchId(updated[0]?.id ?? null);
+    await loadBatches();
     setProduction({ ...DEFAULT_PRODUCTION, batchDate: new Date().toISOString().split("T")[0] });
     showToast("Batch saved! View in Reports ›");
   }, [production, prodCalc, editingBatchId, batches, refreshBatches, loadBatches]);
@@ -179,12 +184,16 @@ export default function Home() {
   }, []);
 
   const handleSaveSelling = useCallback(async () => {
-    if (!selectedBatchId) return;
-    await addSellingEntry(selectedBatchId, selling, sellCalc);
-    await loadBatches();
+    addLocalSale(selling, sellCalc);
+    setSales(getLocalSales());
     setSelling(DEFAULT_SELLING);
-    showToast("Selling info saved!");
-  }, [selectedBatchId, selling, sellCalc, loadBatches]);
+    showToast("Sale saved!");
+  }, [selling, sellCalc]);
+
+  const handleDeleteSale = useCallback(async (id: string) => {
+    deleteLocalSale(id);
+    setSales(getLocalSales());
+  }, []);
 
   const showBadge = activeProdCalc.totalProductionCost > 0 && activeProdCalc.finalYieldGrams > 0 && selling.sellingPrice > 0;
 
@@ -263,16 +272,15 @@ export default function Home() {
           <SellingForm
             data={selling}
             onChange={setSelling}
-            batches={batches}
-            selectedBatchId={selectedBatchId}
-            onSelectBatch={setSelectedBatchId}
             onSaveSelling={handleSaveSelling}
           />
         )}
         {tab === "reports" && (
           <Reports
             batches={batches}
+            sales={sales}
             onUpdate={refreshBatches}
+            onDeleteSale={handleDeleteSale}
             onEditBatch={handleEditBatch}
           />
         )}

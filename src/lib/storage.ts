@@ -109,3 +109,26 @@ export async function clearBatches(): Promise<void> {
   const { error } = await supabase.from("batches").delete().eq("user_id", user.id);
   if (error) console.error("clearBatches:", error.message);
 }
+
+// --- Local (localStorage) sales — not tied to any batch ---
+
+const SALES_KEY = "mmf_sales";
+
+export function getLocalSales(): SellingEntry[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(SALES_KEY) ?? "[]"); } catch { return []; }
+}
+
+export function addLocalSale(selling: SellingInput, sellCalc: SellingCalc): void {
+  const entry: SellingEntry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    savedAt: new Date().toISOString(),
+    selling,
+    sellCalc,
+  };
+  localStorage.setItem(SALES_KEY, JSON.stringify([entry, ...getLocalSales()]));
+}
+
+export function deleteLocalSale(id: string): void {
+  localStorage.setItem(SALES_KEY, JSON.stringify(getLocalSales().filter((e) => e.id !== id)));
+}
