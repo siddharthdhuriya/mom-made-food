@@ -69,7 +69,7 @@ export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
               ref={buyerInputRef}
               type="text"
               value={data.buyerName}
-              placeholder="e.g. Priya, Shop Name…"
+              placeholder="e.g. Neha, Shop Name…"
               onChange={(e) => onChange({ ...data, buyerName: e.target.value })}
               className="input-field flex-1"
             />

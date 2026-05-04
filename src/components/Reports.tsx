@@ -16,7 +16,7 @@ interface Props {
 }
 
 type ReportTab = "summary" | "batches" | "sold" | "customers";
-type FilterType = "all" | "last7" | "last30" | "custom";
+type FilterType = "all" | "last7" | "last30" | "lastMonth" | "custom";
 
 function getBatchDate(b: BatchRecord): string {
   return b.production.batchDate || b.savedAt.slice(0, 10);
@@ -647,6 +647,11 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
       from.setDate(today.getDate() - 29);
       return { from: toDateStr(from), to: toDateStr(today) };
     }
+    if (filterType === "lastMonth") {
+      const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const to = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { from: toDateStr(from), to: toDateStr(to) };
+    }
     if (filterType === "custom" && customFrom && customTo) {
       return { from: customFrom, to: customTo };
     }
@@ -666,6 +671,10 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
   function filterLabel(): string {
     if (filterType === "last7") return "Last 7 days";
     if (filterType === "last30") return "Last 30 days";
+    if (filterType === "lastMonth") {
+      const d = new Date();
+      return new Date(d.getFullYear(), d.getMonth() - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    }
     if (filterType === "custom" && customFrom && customTo) {
       const fmt = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
       return `${fmt(customFrom)} – ${fmt(customTo)}`;
@@ -768,8 +777,8 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
               <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-amber-100 rounded-2xl shadow-lg overflow-hidden">
                 {/* Quick options */}
                 <div className="p-2 space-y-1">
-                  {(["all", "last7", "last30"] as const).map((opt) => {
-                    const labels = { all: "All time", last7: "Last 7 days", last30: "Last 30 days" };
+                  {(["all", "last7", "last30", "lastMonth"] as const).map((opt) => {
+                    const labels = { all: "All time", last7: "Last 7 days", last30: "Last 30 days", lastMonth: "Last month" };
                     return (
                       <button
                         key={opt}
