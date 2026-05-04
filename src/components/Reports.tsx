@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import type { BatchRecord, SellingEntry, SellingInput } from "@/types";
 import { fmt, fmtNum } from "@/lib/calculations";
 import { deleteBatch, clearBatches } from "@/lib/storage";
+import { exportReportsExcel, exportCustomersExcel } from "@/lib/export";
 import CostBreakdownChart from "./CostBreakdownChart";
 
 interface Props {
@@ -839,6 +840,14 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
             )}
           </div>
 
+          <button
+            type="button"
+            onClick={() => exportReportsExcel(filteredBatches, filteredSales, filterLabel())}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-50 border border-green-200 text-sm font-semibold text-green-700 active:bg-green-100 transition-colors"
+          >
+            <span>⬇</span> Download Excel
+          </button>
+
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-amber-50 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-500 mb-1">Total Yield</p>
@@ -1007,9 +1016,18 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
           {customers.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">No sales recorded yet.</div>
           ) : (
-            customers.map(([name, data]) => (
-              <CustomerCard key={name} name={data.name} phone={data.phone} data={data} onDeleteSale={onDeleteSale} />
-            ))
+            <>
+              <button
+                type="button"
+                onClick={() => exportCustomersExcel(sales)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-50 border border-green-200 text-sm font-semibold text-green-700 active:bg-green-100 transition-colors"
+              >
+                <span>⬇</span> Download Customers Excel
+              </button>
+              {customers.map(([name, data]) => (
+                <CustomerCard key={name} name={data.name} phone={data.phone} data={data} onDeleteSale={onDeleteSale} />
+              ))}
+            </>
           )}
         </div>
       )}
