@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { ProductionInput, SellingInput, ProductionCalc, SellingCalc, SellingEntry, BatchRecord } from "@/types";
 import { calculateProduction, calculateSelling } from "@/lib/calculations";
-import { getBatches, saveBatch, updateBatch, getLocalSales, addLocalSale, deleteLocalSale } from "@/lib/storage";
+import { getBatches, saveBatch, updateBatch, getLocalSales, addLocalSale, updateLocalSale, deleteLocalSale } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import AuthScreen from "@/components/AuthScreen";
 import ProductionForm from "@/components/ProductionForm";
@@ -27,6 +27,8 @@ const DEFAULT_PRODUCTION: ProductionInput = {
 
 const DEFAULT_SELLING: SellingInput = {
   saleDate: new Date().toISOString().split("T")[0],
+  buyerName: "",
+  buyerPhone: "",
   packSize: 100,
   quantity: 1,
   sellingPrice: 0,
@@ -88,8 +90,13 @@ export default function Home() {
     return updated;
   }, []);
 
-  // Auth session tracking
+  // Auth session tracking — skipped in local dev
   useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      setSession({} as Session);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -190,6 +197,12 @@ export default function Home() {
     showToast("Sale saved!");
   }, [selling, sellCalc]);
 
+  const handleEditSale = useCallback((id: string, selling: SellingInput) => {
+    const updatedCalc = calculateSelling(activeProdCalc, selling);
+    updateLocalSale(id, selling, updatedCalc);
+    setSales(getLocalSales());
+  }, [activeProdCalc]);
+
   const handleDeleteSale = useCallback(async (id: string) => {
     deleteLocalSale(id);
     setSales(getLocalSales());
@@ -244,14 +257,16 @@ export default function Home() {
                 <span className="font-bold">{Math.abs(sellCalc.profitLoss).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} ₹</span>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => supabase.auth.signOut()}
-              className="text-xs text-gray-400 px-2 py-1 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
-              title="Sign out"
-            >
-              ⏏
-            </button>
+            {process.env.NODE_ENV !== "development" && (
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="text-xs text-gray-400 px-2 py-1 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                title="Sign out"
+              >
+                ⏏
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -281,6 +296,7 @@ export default function Home() {
             sales={sales}
             onUpdate={refreshBatches}
             onDeleteSale={handleDeleteSale}
+            onEditSale={handleEditSale}
             onEditBatch={handleEditBatch}
           />
         )}

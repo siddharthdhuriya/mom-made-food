@@ -12,6 +12,8 @@ export interface ProductionInput {
 
 export interface SellingInput {
   saleDate: string;
+  buyerName: string;
+  buyerPhone?: string;
   packSize: 100 | 250 | 500 | 1000;
   quantity: number;
   sellingPrice: number;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { SellingInput } from "@/types";
 
 interface Props {
@@ -10,11 +11,37 @@ interface Props {
 
 const PACK_SIZES: Array<100 | 250 | 500 | 1000> = [100, 250, 500, 1000];
 
+declare global {
+  interface Navigator {
+    contacts?: {
+      select: (props: string[], opts?: { multiple?: boolean }) => Promise<Array<{ name?: string[]; tel?: string[] }>>;
+    };
+  }
+}
+
 export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
+  const buyerInputRef = useRef<HTMLInputElement>(null);
+
   const set = (field: keyof SellingInput, raw: string) => {
     const num = parseFloat(raw);
     onChange({ ...data, [field]: isNaN(num) || num < 0 ? 0 : num });
   };
+
+  async function pickContact() {
+    if (!navigator.contacts) return;
+    try {
+      const results = await navigator.contacts.select(["name", "tel"], { multiple: false });
+      if (results.length > 0) {
+        const name = results[0].name?.[0] ?? data.buyerName;
+        const phone = results[0].tel?.[0]?.replace(/\s+/g, "") ?? data.buyerPhone ?? "";
+        onChange({ ...data, buyerName: name, buyerPhone: phone });
+      }
+    } catch {
+      // user cancelled or denied
+    }
+  }
+
+  const contactsSupported = typeof navigator !== "undefined" && !!navigator.contacts;
 
   return (
     <div className="space-y-5 pb-8">
@@ -27,6 +54,45 @@ export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
             type="date"
             value={data.saleDate}
             onChange={(e) => onChange({ ...data, saleDate: e.target.value })}
+            className="input-field"
+          />
+        </div>
+      </div>
+
+      {/* Buyer */}
+      <div className="card space-y-3">
+        <p className="section-title">Buyer</p>
+        <div>
+          <label className="label">Buyer name <span className="text-gray-400 font-normal">(optional)</span></label>
+          <div className="flex gap-2">
+            <input
+              ref={buyerInputRef}
+              type="text"
+              value={data.buyerName}
+              placeholder="e.g. Priya, Shop Name…"
+              onChange={(e) => onChange({ ...data, buyerName: e.target.value })}
+              className="input-field flex-1"
+            />
+            {contactsSupported && (
+              <button
+                type="button"
+                onClick={pickContact}
+                className="w-11 h-11 flex items-center justify-center rounded-xl bg-amber-50 border border-amber-200 text-lg active:bg-amber-100 transition-colors flex-shrink-0"
+                title="Pick from contacts"
+              >
+                👤
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="label">Buyer phone <span className="text-gray-400 font-normal">(optional)</span></label>
+          <input
+            type="tel"
+            inputMode="tel"
+            value={data.buyerPhone ?? ""}
+            placeholder="e.g. 9876543210"
+            onChange={(e) => onChange({ ...data, buyerPhone: e.target.value })}
             className="input-field"
           />
         </div>
