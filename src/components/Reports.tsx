@@ -297,7 +297,9 @@ function SaleCard({
             <p className="text-2xl font-extrabold tracking-tight">
               {totalProfit >= 0 ? "+" : ""}{fmt(totalProfit)}
             </p>
-            <p className="text-xs text-white/70 mt-0.5">{fmt(sellCalc.profitLoss)} per pack</p>
+            {(selling.quantity || 1) > 1 && (
+              <p className="text-xs text-white/70 mt-0.5">{fmt(sellCalc.profitLoss)} per pack</p>
+            )}
           </div>
           <span
             className={`text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -311,58 +313,66 @@ function SaleCard({
 
       {expanded && !editMode && (
         <>
-          <div
-            className={`px-3 pt-2 pb-1 grid grid-cols-2 gap-2 text-xs ${
-              sellCalc.isProfit
-                ? "bg-gradient-to-br from-green-500 to-green-600"
-                : "bg-gradient-to-br from-red-500 to-red-600"
-            } text-white`}
-          >
-            <div>
-              <p className="text-white/70">Selling Price</p>
-              <p className="font-semibold">{fmt(selling.sellingPrice)}</p>
-            </div>
-            <div>
-              <p className="text-white/70">Cost per Pack</p>
-              <p className="font-semibold">{fmt(sellCalc.costPerPack)}</p>
-            </div>
-          </div>
-          <div className="p-3 bg-white">
-            {selling.buyerName && (
-              <PnLRow label="Buyer" value={selling.buyerPhone ? `${selling.buyerName} · ${selling.buyerPhone}` : selling.buyerName} />
-            )}
-            <PnLRow label={`Production cost (${selling.packSize}g)`} value={fmt(sellCalc.costPerPack - selling.packagingCost)} />
-            <PnLRow label="Packaging cost" value={fmt(selling.packagingCost)} />
-            <PnLRow label="Total cost per pack" value={fmt(sellCalc.costPerPack)} divider highlight />
-            <PnLRow label="MRP" value={fmt(selling.sellingPrice)} />
-            {sellCalc.discountAmount > 0 && (
-              <PnLRow label="Discount" value={`-${fmt(sellCalc.discountAmount)}`} red />
-            )}
-            <PnLRow label="Effective selling price" value={fmt(sellCalc.effectiveSellingPrice)} divider highlight />
-            <PnLRow
-              label={sellCalc.isProfit ? "Profit per pack" : "Loss per pack"}
-              value={`${sellCalc.isProfit ? "+" : ""}${fmt(Math.abs(sellCalc.profitLoss))}`}
-              divider
-              green={sellCalc.isProfit}
-              red={!sellCalc.isProfit}
-            />
-            <div className="pt-2 flex gap-2">
-              <button
-                type="button"
-                onClick={startEdit}
-                className="flex-1 text-xs text-blue-500 font-medium py-2 rounded-xl bg-blue-50 active:bg-blue-100 transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConfirm(true)}
-                className="flex-1 text-xs text-red-400 font-medium py-2 rounded-xl bg-red-50 active:bg-red-100 transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
+          {(() => {
+            const qty = selling.quantity || 1;
+            const prodCost = sellCalc.costPerPack - selling.packagingCost;
+            return (
+              <>
+                <div
+                  className={`px-3 pt-2 pb-1 grid grid-cols-2 gap-2 text-xs ${
+                    sellCalc.isProfit
+                      ? "bg-gradient-to-br from-green-500 to-green-600"
+                      : "bg-gradient-to-br from-red-500 to-red-600"
+                  } text-white`}
+                >
+                  <div>
+                    <p className="text-white/70">{qty > 1 ? "Total Revenue" : "Selling Price"}</p>
+                    <p className="font-semibold">{fmt(sellCalc.effectiveSellingPrice * qty)}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/70">{qty > 1 ? "Total Cost" : "Cost per Pack"}</p>
+                    <p className="font-semibold">{fmt(sellCalc.costPerPack * qty)}</p>
+                  </div>
+                </div>
+                <div className="p-3 bg-white">
+                  {selling.buyerName && (
+                    <PnLRow label="Buyer" value={selling.buyerPhone ? `${selling.buyerName} · ${selling.buyerPhone}` : selling.buyerName} />
+                  )}
+                  <PnLRow label={`Production cost (${qty > 1 ? `${qty} × ` : ""}${selling.packSize}g)`} value={fmt(prodCost * qty)} />
+                  <PnLRow label={`Packaging cost${qty > 1 ? ` (${qty} packs)` : ""}`} value={fmt(selling.packagingCost * qty)} />
+                  <PnLRow label={qty > 1 ? "Total cost" : "Total cost per pack"} value={fmt(sellCalc.costPerPack * qty)} divider highlight />
+                  <PnLRow label={qty > 1 ? "Total MRP" : "MRP"} value={fmt(selling.sellingPrice * qty)} />
+                  {sellCalc.discountAmount > 0 && (
+                    <PnLRow label="Discount" value={`-${fmt(sellCalc.discountAmount * qty)}`} red />
+                  )}
+                  <PnLRow label={qty > 1 ? "Total revenue" : "Effective selling price"} value={fmt(sellCalc.effectiveSellingPrice * qty)} divider highlight />
+                  <PnLRow
+                    label={sellCalc.isProfit ? (qty > 1 ? "Total profit" : "Profit per pack") : (qty > 1 ? "Total loss" : "Loss per pack")}
+                    value={`${sellCalc.isProfit ? "+" : ""}${fmt(Math.abs(sellCalc.profitLoss * qty))}`}
+                    divider
+                    green={sellCalc.isProfit}
+                    red={!sellCalc.isProfit}
+                  />
+                  <div className="pt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={startEdit}
+                      className="flex-1 text-xs text-blue-500 font-medium py-2 rounded-xl bg-blue-50 active:bg-blue-100 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(true)}
+                      className="flex-1 text-xs text-red-400 font-medium py-2 rounded-xl bg-red-50 active:bg-red-100 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </>
       )}
 
