@@ -231,6 +231,18 @@ function SaleCard({
   const { selling, sellCalc } = entry;
   const totalProfit = sellCalc.profitLoss * (selling.quantity || 1);
 
+  // Derive original cost-per-gram so the live preview uses the same production cost as the stored entry
+  const origCostPerGram = entry.selling.packSize > 0
+    ? (entry.sellCalc.costPerPack - entry.selling.packagingCost) / entry.selling.packSize
+    : 0;
+  const draftCostPerPack = origCostPerGram * draft.packSize + draft.packagingCost;
+  const draftDiscountAmount = draft.discountType === "percent"
+    ? (draft.sellingPrice * draft.discount) / 100
+    : draft.discount;
+  const draftEffective = Math.max(0, draft.sellingPrice - draftDiscountAmount);
+  const draftProfitLoss = draftEffective - draftCostPerPack;
+  const draftTotalProfit = draftProfitLoss * (draft.quantity || 1);
+
   const displayDate = selling.saleDate
     ? new Date(selling.saleDate + "T00:00:00").toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -480,6 +492,26 @@ function SaleCard({
               onChange={(e) => setNum("discount", e.target.value)}
               className="input-field"
             />
+          </div>
+
+          {/* Live P&L preview */}
+          <div className={`rounded-xl px-3 py-2.5 ${draftProfitLoss >= 0 ? "bg-green-50" : "bg-red-50"}`}>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-500">Cost per pack</span>
+              <span className="font-medium text-gray-700">{fmt(draftCostPerPack)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-500">Effective price</span>
+              <span className="font-medium text-gray-700">{fmt(draftEffective)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-semibold border-t border-black/5 pt-1.5 mt-1">
+              <span className={draftProfitLoss >= 0 ? "text-green-700" : "text-red-600"}>
+                {draftProfitLoss >= 0 ? "Profit" : "Loss"}
+              </span>
+              <span className={draftProfitLoss >= 0 ? "text-green-700" : "text-red-600"}>
+                {draftProfitLoss >= 0 ? "+" : ""}{fmt(draftTotalProfit)} ({fmt(draftProfitLoss)}/pack)
+              </span>
+            </div>
           </div>
 
           <div className="flex gap-2 pt-1">

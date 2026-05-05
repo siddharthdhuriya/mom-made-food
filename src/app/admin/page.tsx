@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { ProductionInput, SellingInput, ProductionCalc, SellingCalc, SellingEntry, BatchRecord } from "@/types";
 import { calculateProduction, calculateSelling } from "@/lib/calculations";
-import { getBatches, saveBatch, updateBatch, getLocalSales, addLocalSale, updateLocalSale, deleteLocalSale } from "@/lib/storage";
+import { getBatches, saveBatch, updateBatch, getSales, addSale, updateSale, deleteSale, migrateLocalSales } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import AuthScreen from "@/components/AuthScreen";
 import ProductionForm from "@/components/ProductionForm";
@@ -90,6 +90,10 @@ export default function Home() {
     return updated;
   }, []);
 
+  const loadSales = useCallback(async (): Promise<void> => {
+    setSales(await getSales());
+  }, []);
+
   // Auth session tracking — skipped in local dev
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
@@ -113,12 +117,24 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load batches + local sales once authenticated
+  // Load batches + sales once authenticated; migrate any localStorage entries to Supabase
   useEffect(() => {
     if (!session) return;
     loadBatches();
-    setSales(getLocalSales());
-  }, [session, loadBatches]);
+    migrateLocalSales().then(() => loadSales());
+  }, [session, loadBatches, loadSales]);
+
+  // Realtime: refresh sales whenever any user adds, edits, or deletes an entry
+  useEffect(() => {
+    if (!session || process.env.NODE_ENV === "development") return;
+    const channel = supabase
+      .channel("sales_live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "sales" }, () => {
+        loadSales();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session, loadSales]);
 
   // avg cost per gram across all batches for sell calc
   const activeProdCalc = useMemo<ProductionCalc>(() => {
@@ -191,22 +207,27 @@ export default function Home() {
   }, []);
 
   const handleSaveSelling = useCallback(async () => {
-    addLocalSale(selling, sellCalc);
-    setSales(getLocalSales());
+    await addSale(selling, sellCalc);
+    await loadSales();
     setSelling(DEFAULT_SELLING);
     showToast("Sale saved!");
-  }, [selling, sellCalc]);
+  }, [selling, sellCalc, loadSales]);
 
-  const handleEditSale = useCallback((id: string, selling: SellingInput) => {
-    const updatedCalc = calculateSelling(activeProdCalc, selling);
-    updateLocalSale(id, selling, updatedCalc);
-    setSales(getLocalSales());
-  }, [activeProdCalc]);
+  const handleEditSale = useCallback(async (id: string, selling: SellingInput) => {
+    const original = sales.find((e) => e.id === id);
+    const origCostPerGram = original && original.selling.packSize > 0
+      ? (original.sellCalc.costPerPack - original.selling.packagingCost) / original.selling.packSize
+      : 0;
+    const pseudoProdCalc = { ...ZERO_PROD_CALC, costPerGram: origCostPerGram };
+    const updatedCalc = calculateSelling(pseudoProdCalc, selling);
+    await updateSale(id, selling, updatedCalc);
+    await loadSales();
+  }, [sales, loadSales]);
 
   const handleDeleteSale = useCallback(async (id: string) => {
-    deleteLocalSale(id);
-    setSales(getLocalSales());
-  }, []);
+    await deleteSale(id);
+    await loadSales();
+  }, [loadSales]);
 
   const showBadge = activeProdCalc.totalProductionCost > 0 && activeProdCalc.finalYieldGrams > 0 && selling.sellingPrice > 0;
 

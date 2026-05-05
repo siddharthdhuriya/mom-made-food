@@ -173,31 +173,70 @@ export async function clearBatches(): Promise<void> {
   if (error) console.error("clearBatches:", error.message);
 }
 
-// --- Local (localStorage) sales — not tied to any batch ---
+// --- Sales — shared across all users via Supabase; localStorage in dev ---
 
 const SALES_KEY = "mmf_sales";
 
-export function getLocalSales(): SellingEntry[] {
+type SalesRow = { id: string; saved_at: string; selling: SellingInput; sell_calc: SellingCalc };
+
+function rowToEntry(row: SalesRow): SellingEntry {
+  return { id: row.id, savedAt: row.saved_at, selling: row.selling, sellCalc: row.sell_calc };
+}
+
+function lsGetSales(): SellingEntry[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(SALES_KEY) ?? "[]"); } catch { return []; }
 }
 
-export function addLocalSale(selling: SellingInput, sellCalc: SellingCalc): void {
-  const entry: SellingEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    savedAt: new Date().toISOString(),
-    selling,
-    sellCalc,
-  };
-  localStorage.setItem(SALES_KEY, JSON.stringify([entry, ...getLocalSales()]));
+export async function getSales(): Promise<SellingEntry[]> {
+  if (IS_LOCAL) return lsGetSales();
+  const { data, error } = await supabase
+    .from("sales")
+    .select("id, saved_at, selling, sell_calc")
+    .order("saved_at", { ascending: false })
+    .limit(500);
+  if (error) { console.error("getSales:", error.message); return []; }
+  return (data as SalesRow[]).map(rowToEntry);
 }
 
-export function updateLocalSale(id: string, selling: SellingInput, sellCalc: SellingCalc): void {
-  localStorage.setItem(SALES_KEY, JSON.stringify(
-    getLocalSales().map((e) => e.id === id ? { ...e, selling, sellCalc } : e)
-  ));
+export async function addSale(selling: SellingInput, sellCalc: SellingCalc): Promise<void> {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const savedAt = new Date().toISOString();
+  if (IS_LOCAL) {
+    const entry: SellingEntry = { id, savedAt, selling, sellCalc };
+    localStorage.setItem(SALES_KEY, JSON.stringify([entry, ...lsGetSales()]));
+    return;
+  }
+  const { error } = await supabase.from("sales").insert({ id, saved_at: savedAt, selling, sell_calc: sellCalc });
+  if (error) console.error("addSale:", error.message);
 }
 
-export function deleteLocalSale(id: string): void {
-  localStorage.setItem(SALES_KEY, JSON.stringify(getLocalSales().filter((e) => e.id !== id)));
+export async function updateSale(id: string, selling: SellingInput, sellCalc: SellingCalc): Promise<void> {
+  if (IS_LOCAL) {
+    localStorage.setItem(SALES_KEY, JSON.stringify(
+      lsGetSales().map((e) => e.id === id ? { ...e, selling, sellCalc } : e)
+    ));
+    return;
+  }
+  const { error } = await supabase.from("sales").update({ selling, sell_calc: sellCalc }).eq("id", id);
+  if (error) console.error("updateSale:", error.message);
+}
+
+export async function deleteSale(id: string): Promise<void> {
+  if (IS_LOCAL) {
+    localStorage.setItem(SALES_KEY, JSON.stringify(lsGetSales().filter((e) => e.id !== id)));
+    return;
+  }
+  const { error } = await supabase.from("sales").delete().eq("id", id);
+  if (error) console.error("deleteSale:", error.message);
+}
+
+export async function migrateLocalSales(): Promise<void> {
+  if (IS_LOCAL) return;
+  const local = lsGetSales();
+  if (local.length === 0) return;
+  const rows = local.map((e) => ({ id: e.id, saved_at: e.savedAt, selling: e.selling, sell_calc: e.sellCalc }));
+  const { error } = await supabase.from("sales").upsert(rows, { onConflict: "id" });
+  if (!error) localStorage.removeItem(SALES_KEY);
+  else console.error("migrateLocalSales:", error.message);
 }
