@@ -275,6 +275,22 @@ function SaleCard({
     setDraft((d) => ({ ...d, [field]: isNaN(n) || n < 0 ? 0 : n }));
   }
 
+  async function pickContact() {
+    if (!navigator.contacts) return;
+    try {
+      const results = await navigator.contacts.select(["name", "tel"], { multiple: false });
+      if (results.length > 0) {
+        const name = results[0].name?.[0] ?? draft.buyerName;
+        const phone = results[0].tel?.[0]?.replace(/\s+/g, "") ?? draft.buyerPhone ?? "";
+        setDraft((d) => ({ ...d, buyerName: name, buyerPhone: phone }));
+      }
+    } catch {
+      // user cancelled or denied
+    }
+  }
+
+  const contactsSupported = typeof navigator !== "undefined" && !!navigator.contacts;
+
   return (
     <div className="border border-amber-100 rounded-2xl overflow-hidden">
       <button
@@ -393,13 +409,25 @@ function SaleCard({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Buyer Name</label>
-              <input
-                type="text"
-                value={draft.buyerName}
-                placeholder="Optional"
-                onChange={(e) => setDraft((d) => ({ ...d, buyerName: e.target.value }))}
-                className="input-field"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={draft.buyerName}
+                  placeholder="Optional"
+                  onChange={(e) => setDraft((d) => ({ ...d, buyerName: e.target.value }))}
+                  className="input-field flex-1"
+                />
+                {contactsSupported && (
+                  <button
+                    type="button"
+                    onClick={pickContact}
+                    className="w-11 h-11 flex items-center justify-center rounded-xl bg-amber-50 border border-amber-200 text-lg active:bg-amber-100 transition-colors flex-shrink-0"
+                    title="Pick from contacts"
+                  >
+                    👤
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Buyer Phone</label>
