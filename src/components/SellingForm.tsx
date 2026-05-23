@@ -9,7 +9,7 @@ interface Props {
   onSaveSelling: () => void;
 }
 
-const PACK_SIZES: Array<100 | 250 | 500 | 1000> = [100, 250, 500, 1000];
+const FIXED_PACK_SIZES = [100, 250, 500, 1000] as const;
 
 declare global {
   interface Navigator {
@@ -42,6 +42,7 @@ export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
   }
 
   const contactsSupported = typeof navigator !== "undefined" && !!navigator.contacts;
+  const isCustomSize = !(FIXED_PACK_SIZES as readonly number[]).includes(data.packSize);
 
   return (
     <div className="space-y-5 pb-8">
@@ -101,21 +102,52 @@ export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
       {/* Pack Size & Quantity */}
       <div className="card space-y-4">
         <p className="section-title">Pack Size</p>
-        <div className="grid grid-cols-4 gap-2">
-          {PACK_SIZES.map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => onChange({ ...data, packSize: size })}
-              className={`py-3 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 ${
-                data.packSize === size
-                  ? "bg-amber-500 text-white shadow-md shadow-amber-200"
-                  : "bg-amber-50 text-amber-700 border border-amber-200"
-              }`}
-            >
-              {size}g
-            </button>
-          ))}
+        <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-2">
+            {FIXED_PACK_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => onChange({ ...data, packSize: size })}
+                className={`py-3 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 ${
+                  data.packSize === size
+                    ? "bg-amber-500 text-white shadow-md shadow-amber-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}
+              >
+                {size}g
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!isCustomSize) onChange({ ...data, packSize: 0 }); }}
+            className={`w-full py-3 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 ${
+              isCustomSize
+                ? "bg-amber-500 text-white shadow-md shadow-amber-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
+            }`}
+          >
+            Other (custom grams)
+          </button>
+          {isCustomSize && (
+            <div>
+              <label className="label">Pack size (g)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                value={data.packSize > 0 ? data.packSize : ""}
+                placeholder="e.g. 150"
+                autoFocus
+                onChange={(e) => {
+                  const n = parseInt(e.target.value);
+                  onChange({ ...data, packSize: isNaN(n) || n <= 0 ? 0 : n });
+                }}
+                className="input-field"
+              />
+            </div>
+          )}
         </div>
 
         <div>
@@ -229,15 +261,17 @@ export default function SellingForm({ data, onChange, onSaveSelling }: Props) {
       <button
         type="button"
         onClick={onSaveSelling}
-        disabled={data.sellingPrice <= 0}
+        disabled={data.sellingPrice <= 0 || data.packSize <= 0}
         className={`w-full font-semibold rounded-2xl py-4 text-base transition-all duration-150 shadow-md active:scale-[0.98] select-none ${
-          data.sellingPrice > 0
+          data.sellingPrice > 0 && data.packSize > 0
             ? "bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white"
             : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
         }`}
       >
         {data.sellingPrice <= 0
           ? "Enter selling price first"
+          : data.packSize <= 0
+          ? "Enter pack size in grams"
           : `Save — ${data.quantity || 1} × ${data.packSize}g Pack`}
       </button>
     </div>

@@ -14,7 +14,7 @@ export interface SellingInput {
   saleDate: string;
   buyerName: string;
   buyerPhone?: string;
-  packSize: 100 | 250 | 500 | 1000;
+  packSize: number;
   quantity: number;
   sellingPrice: number;
   packagingCost: number;

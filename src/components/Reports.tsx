@@ -213,7 +213,7 @@ function BatchDetail({
   );
 }
 
-const PACK_SIZES_REPORT: Array<100 | 250 | 500 | 1000> = [100, 250, 500, 1000];
+const FIXED_PACK_SIZES_REPORT = [100, 250, 500, 1000] as const;
 
 function SaleCard({
   entry,
@@ -444,21 +444,56 @@ function SaleCard({
 
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Pack Size</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {PACK_SIZES_REPORT.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => setDraft((d) => ({ ...d, packSize: size }))}
-                  className={`py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
-                    draft.packSize === size
-                      ? "bg-amber-500 text-white"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}
-                >
-                  {size}g
-                </button>
-              ))}
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
+                {FIXED_PACK_SIZES_REPORT.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, packSize: size }))}
+                    className={`py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
+                      draft.packSize === size
+                        ? "bg-amber-500 text-white"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}
+                  >
+                    {size}g
+                  </button>
+                ))}
+              </div>
+              {(() => {
+                const isCustom = !(FIXED_PACK_SIZES_REPORT as readonly number[]).includes(draft.packSize);
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { if (!isCustom) setDraft((d) => ({ ...d, packSize: 0 })); }}
+                      className={`w-full py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
+                        isCustom
+                          ? "bg-amber-500 text-white"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}
+                    >
+                      Other (custom grams)
+                    </button>
+                    {isCustom && (
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        value={draft.packSize > 0 ? draft.packSize : ""}
+                        placeholder="Pack size in grams"
+                        autoFocus
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value);
+                          setDraft((d) => ({ ...d, packSize: isNaN(n) || n <= 0 ? 0 : n }));
+                        }}
+                        className="input-field text-sm"
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
