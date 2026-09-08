@@ -61,7 +61,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "production", label: "Inputs", icon: "🥬" },
   { id: "selling", label: "Selling", icon: "🏷️" },
   { id: "reports", label: "Reports", icon: "📊" },
-  { id: "pricing", label: "Pricing", icon: "💰" },
+  { id: "pricing", label: "Customize", icon: "💰" },
 ];
 
 export default function Home() {
