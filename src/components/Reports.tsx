@@ -5,6 +5,7 @@ import type { BatchRecord, SellingEntry, SellingInput } from "@/types";
 import { fmt, fmtNum } from "@/lib/calculations";
 import { deleteBatch, clearBatches } from "@/lib/storage";
 import { exportReportsExcel, exportCustomersExcel } from "@/lib/export";
+import { fetchWaMessage, DEFAULT_WA_MESSAGE } from "@/lib/waMessage";
 import CostBreakdownChart from "./CostBreakdownChart";
 
 interface Props {
@@ -622,11 +623,13 @@ function CustomerCard({
   name,
   phone,
   data,
+  waMessage,
   onDeleteSale,
 }: {
   name: string;
   phone: string;
   data: { totalPacks: number; totalGrams: number; totalRevenue: number; totalProfit: number; entries: SellingEntry[] };
+  waMessage: string;
   onDeleteSale: (id: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -650,7 +653,7 @@ function CustomerCard({
                 <p className="text-xs text-gray-500">
                   {phone && (
                     <a
-                      href={`https://wa.me/${phone.replace(/\D/g, "").replace(/^0/, "91")}?text=${encodeURIComponent("Hi😊\nMaking a fresh batch of banana chips this week in small batches, as always. Let me know if you'd like to order some for you.")}`}
+                      href={`https://wa.me/${phone.replace(/\D/g, "").replace(/^0/, "91")}?text=${encodeURIComponent(waMessage)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -729,7 +732,12 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
   const [pendingFrom, setPendingFrom] = useState("");
   const [pendingTo, setPendingTo] = useState("");
   const [showClearModal, setShowClearModal] = useState(false);
+  const [waMessage, setWaMessage] = useState(DEFAULT_WA_MESSAGE);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchWaMessage().then(setWaMessage);
+  }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -1130,7 +1138,7 @@ export default function Reports({ batches, sales, onUpdate, onDeleteSale, onEdit
                 <span>⬇</span> Download Customers Excel
               </button>
               {customers.map(([name, data]) => (
-                <CustomerCard key={name} name={data.name} phone={data.phone} data={data} onDeleteSale={onDeleteSale} />
+                <CustomerCard key={name} name={data.name} phone={data.phone} data={data} waMessage={waMessage} onDeleteSale={onDeleteSale} />
               ))}
             </>
           )}

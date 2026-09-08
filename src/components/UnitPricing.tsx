@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { fetchWaMessage, saveWaMessage, DEFAULT_WA_MESSAGE } from "@/lib/waMessage";
 
 type PricingRow = {
   id: string;
@@ -24,6 +25,12 @@ export default function UnitPricing() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
 
+  // Prefilled WhatsApp message for customer outreach (Reports › Customers)
+  const [waMessage, setWaMessage] = useState(DEFAULT_WA_MESSAGE);
+  const [waSavedMessage, setWaSavedMessage] = useState(DEFAULT_WA_MESSAGE);
+  const [waSaving, setWaSaving] = useState(false);
+  const [waStatus, setWaStatus] = useState<"idle" | "saved" | "error">("idle");
+
   useEffect(() => {
     supabase
       .from("unit_pricing")
@@ -33,7 +40,25 @@ export default function UnitPricing() {
         if (!error && data && data.length > 0) setRows(data);
         setLoading(false);
       });
+    fetchWaMessage().then((m) => {
+      setWaMessage(m);
+      setWaSavedMessage(m);
+    });
   }, []);
+
+  const handleWaSave = async () => {
+    setWaSaving(true);
+    setWaStatus("idle");
+    const { error } = await saveWaMessage(waMessage);
+    setWaSaving(false);
+    if (error) {
+      setWaStatus("error");
+    } else {
+      setWaSavedMessage(waMessage);
+      setWaStatus("saved");
+      setTimeout(() => setWaStatus("idle"), 3000);
+    }
+  };
 
   const handleChange = (id: string, value: string) => {
     const num = parseInt(value, 10);
@@ -119,6 +144,50 @@ export default function UnitPricing() {
         </p>
       )}
       {status === "error" && (
+        <p className="text-sm text-red-500 text-center mt-3">
+          Failed to save. Try again.
+        </p>
+      )}
+
+      {/* Customer WhatsApp message */}
+      <div className="bg-white rounded-2xl border border-amber-100 overflow-hidden shadow-sm mt-8 mb-4">
+        <div className="px-4 py-3 bg-amber-50 border-b border-amber-100">
+          <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">
+            Customer WhatsApp Message
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Prefilled text when you tap a customer&apos;s number in Reports › Customers. Emojis allowed.
+          </p>
+        </div>
+        <div className="p-4">
+          <textarea
+            value={waMessage}
+            onChange={(e) => {
+              setWaMessage(e.target.value);
+              setWaStatus("idle");
+            }}
+            rows={5}
+            className="input-field w-full text-sm leading-relaxed resize-y"
+            placeholder="Type the message customers will see…"
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleWaSave}
+        disabled={waSaving || waMessage.trim() === "" || waMessage === waSavedMessage}
+        className="btn-primary"
+      >
+        {waSaving ? "Saving…" : "Save Message"}
+      </button>
+
+      {waStatus === "saved" && (
+        <p className="text-sm text-green-600 text-center mt-3 font-medium">
+          Message saved
+        </p>
+      )}
+      {waStatus === "error" && (
         <p className="text-sm text-red-500 text-center mt-3">
           Failed to save. Try again.
         </p>
